@@ -2,6 +2,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -61,10 +62,13 @@ namespace Company.Function
                 string myString = "C:\\Users\\Thomas\\Powershell\\test.ps1";
                 // specify the script code to run.
                 //ps.AddScript("echo " + name);
-                ps.AddScript(myString);
+                ps.AddCommand(myString);
 
                 // specify the parameters to pass into the script.
-                //ps.AddParameters();
+                var scriptParams = new Dictionary<string, string>();
+                scriptParams.Add("param1", "Hello from Param1");
+                scriptParams.Add("param2", "Hello from Param2");
+                ps.AddParameters(scriptParams);
 
                 // execute the script and await the result.                
                 //var pipelineObjects = await ps.InvokeAsync().ConfigureAwait(false);
@@ -73,7 +77,6 @@ namespace Company.Function
                 // print the resulting pipeline objects to the console.
                 foreach (var item in output)
                 {
-                    Console.WriteLine("*****");
                     Console.WriteLine(item.ToString());
                 }
             }
