@@ -22,9 +22,10 @@ namespace Company.Function
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
             ILogger log)
         {
-           log.LogInformation("C# HTTP trigger function processed a request.");
+            log.LogInformation("C# HTTP trigger function processed a request.");
 
             string name = req.Query["name"];
+            var allParams = req.GetQueryParameterDictionary();
 
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             dynamic data = JsonConvert.DeserializeObject(requestBody);
@@ -50,41 +51,46 @@ namespace Company.Function
             }*/
 
             WSManConnectionInfo connectionInfo = new WSManConnectionInfo();
-            connectionInfo.Credential = new PSCredential("Thomas", ConvertToSecureString(""));
-            connectionInfo.ComputerName = "";
+            connectionInfo.Credential = new PSCredential(Environment.GetEnvironmentVariable("User"), ConvertToSecureString(Environment.GetEnvironmentVariable("Password")));
+            connectionInfo.ComputerName = Environment.GetEnvironmentVariable("ScriptHost");
             Runspace runspace = RunspaceFactory.CreateRunspace(connectionInfo);
             runspace.Open();
-
+            string outputString = "";
             using (PowerShell ps = PowerShell.Create())
             {
                 ps.Runspace = runspace;
                 
-                string myString = "C:\\Users\\Thomas\\Powershell\\test.ps1";
+                string scriptPath = Environment.GetEnvironmentVariable("ScriptPath");
                 // specify the script code to run.
-                //ps.AddScript("echo " + name);
-                ps.AddCommand(myString);
+                ps.AddCommand(scriptPath);
+
+                var scriptParams = new Dictionary<string, string>();
+                foreach (var item in allParams)
+                {
+                    scriptParams.Add(item.Key, item.Value);
+
+                }
 
                 // specify the parameters to pass into the script.
-                var scriptParams = new Dictionary<string, string>();
-                scriptParams.Add("param1", "Hello from Param1");
-                scriptParams.Add("param2", "Hello from Param2");
                 ps.AddParameters(scriptParams);
 
                 // execute the script and await the result.                
-                //var pipelineObjects = await ps.InvokeAsync().ConfigureAwait(false);
                 var output = ps.Invoke();
 
                 // print the resulting pipeline objects to the console.
+                
+                
                 foreach (var item in output)
                 {
                     Console.WriteLine(item.ToString());
+                    outputString += item.ToString() + "\n";
                 }
             }
             runspace.Close();
 
-            string responseMessage = string.IsNullOrEmpty(name)
-                ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-                : $"Hello, {name}. This HTTP triggered function executed successfully.";
+            string responseMessage = string.IsNullOrEmpty(outputString)
+                ? "NO OUTPUT"
+                : $"Connect to {Environment.GetEnvironmentVariable("ScriptHost")} as {Environment.GetEnvironmentVariable("User")} with OUTPUT: \n{outputString}";
 
             return new OkObjectResult(responseMessage);
 
